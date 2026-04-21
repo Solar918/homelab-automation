@@ -1,0 +1,24 @@
+- name: Ensure qBitTorrent is installed
+  apt:
+    name: qbittorrent-nox
+    state: present
+    update_cache: yes
+
+- name: Create qBitTorrent systemd service file
+  copy:
+    src: ../../../files/service-files/qbittorrent-nox.service
+    dest: /etc/systemd/system/qbittorrent-nox.service
+    owner: root
+    group: root
+    mode: '0644'
+    force: yes
+    remote_src: no
+
+- name: Reload systemd daemon
+  command: sudo systemctl daemon-reload
+
+- name: Enable and start qBitTorrent service
+  systemd:
+    name: qbittorrent-nox
+    enabled: true
+    state: started

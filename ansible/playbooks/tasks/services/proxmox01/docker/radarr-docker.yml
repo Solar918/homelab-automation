@@ -1,0 +1,24 @@
+- name: Check if Radarr is installed
+  stat:
+    path: /opt/radarr
+  register: radarr_installed
+
+- name: Create Radarr directory
+  file:
+    path: /opt/radarr
+    state: directory
+    mode: '0755'
+  when: not radarr_installed.stat.exists
+
+- name: Copy Radarr docker-compose file
+  copy:
+    src: ../../../../files/docker-compose/radarr-compose.yaml
+    dest: /opt/radarr/docker-compose.yaml
+    mode: '0644'
+  when: not radarr_installed.stat.exists
+
+- name: Run Radarr container
+  shell: docker compose up -d
+  args:
+    chdir: /opt/radarr
+  when: not radarr_installed.stat.exists

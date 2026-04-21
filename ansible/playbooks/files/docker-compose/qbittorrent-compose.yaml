@@ -1,0 +1,21 @@
+---
+services:
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:latest
+    container_name: qbittorrent
+    restart: unless-stopped
+    labels:
+      - deunhealth.restart.on.unhealthy=true
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Pacific/Auckland
+      - WEBUI_PORT=8080 # must match "qbittorrent web interface" port number in gluetun's service above
+      # - TORRENTING_PORT=${FIREWALL_VPN_INPUT_PORTS} # airvpn forwarded port, pulled from .env
+    volumes:
+      - /opt/qbittorrent:/config
+      - /mnt/media:/media
+    ports:
+      - 8080:8080
+      - 6881:6881
+      - 6881:6881/udp

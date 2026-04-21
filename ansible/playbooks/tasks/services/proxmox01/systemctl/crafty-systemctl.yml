@@ -1,0 +1,107 @@
+- name: Check if Crafty is installed
+  stat:
+    path: /opt/minecraft
+  register: crafty_installed
+
+# Install required packages
+- name: Ensure required packages are installed
+  apt:
+    name:
+      - git
+      - python3.10
+      - python3.10-venv
+      - python3.10-dev
+      - python3-pip
+      - software-properties-common
+      - openjdk-8-jdk
+      - openjdk-8-jre
+      - dos2unix
+    state: present
+    update_cache: yes
+
+- name: Mark Crafty repo as safe for git
+  become: yes
+  ansible.builtin.command:
+    cmd: git config --global --add safe.directory /opt/minecraft/crafty/crafty-4
+  args:
+    creates: /root/.gitconfig
+
+# Create Crafty service user
+- name: Create Crafty service user
+  user:
+    name: crafty
+    shell: /bin/bash
+    create_home: yes
+
+# Clone Crafty repository
+- name: Clone Crafty repository
+  git:
+    repo: "https://gitlab.com/crafty-controller/crafty-4.git"
+    dest: /opt/minecraft/crafty/crafty-4
+    version: HEAD
+    force: yes
+  when: not crafty_installed.stat.exists
+
+# Create Python virtual environment
+- name: Create virtualenv for Crafty
+  command: python3.10 -m venv /opt/minecraft/crafty/.venv
+  args:
+    creates: /opt/minecraft/crafty/.venv
+  when: not crafty_installed.stat.exists
+
+# Install Crafty Python dependencies in virtualenv
+- name: Install Crafty Python dependencies
+  pip:
+    requirements: /opt/minecraft/crafty/crafty-4/requirements.txt
+    virtualenv: /opt/minecraft/crafty/.venv
+  when: not crafty_installed.stat.exists
+
+# Create run_crafty_service.sh script
+- name: Create run_crafty_service.sh
+  copy:
+    dest: /opt/minecraft/crafty/run_crafty_service.sh
+    owner: crafty
+    group: crafty
+    mode: '0755'
+    content: |
+      #!/bin/bash
+      cd /opt/minecraft/crafty
+      source .venv/bin/activate
+      cd crafty-4
+      python3 main.py -d
+
+# Ensure Unix line endings
+- name: Convert run_crafty_service.sh to Unix line endings
+  command: dos2unix /opt/minecraft/crafty/run_crafty_service.sh
+  when: not crafty_installed.stat.exists
+
+# Fix ownership of all Crafty files
+- name: Ensure Crafty directory ownership is correct
+  file:
+    path: /opt/minecraft/crafty
+    state: directory
+    owner: crafty
+    group: crafty
+    recurse: yes
+
+# Install systemd unit for Crafty
+- name: Install systemd unit for Crafty
+  copy:
+    src: ../../../files/service-files/crafty.service
+    dest: /etc/systemd/system/crafty.service
+    owner: root
+    group: root
+    mode: '0644'
+    force: yes
+    remote_src: no
+
+# Reload systemd
+- name: Reload systemd to pick up Crafty service
+  command: systemctl daemon-reload
+
+# Enable and start Crafty service
+- name: Enable and start Crafty service
+  systemd:
+    name: crafty
+    enabled: true
+    state: started

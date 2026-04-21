@@ -1,0 +1,24 @@
+- name: Check if Crafty is installed
+  stat:
+    path: /opt/crafty
+  register: crafty_installed
+
+- name: Create Crafty directory
+  file:
+    path: /opt/crafty
+    state: directory
+    mode: '0755'
+  when: not crafty_installed.stat.exists
+
+- name: Copy Crafty docker-compose file
+  copy:
+    src: ../../../../files/docker-compose/crafty-compose.yaml
+    dest: /opt/crafty/docker-compose.yaml
+    mode: '0644'
+  when: not crafty_installed.stat.exists
+
+- name: Run Crafty container
+  shell: docker compose up -d
+  args:
+    chdir: /opt/crafty
+  when: not crafty_installed.stat.exists

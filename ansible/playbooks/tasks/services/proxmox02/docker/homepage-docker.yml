@@ -1,0 +1,24 @@
+- name: Check if Homepage is installed
+  stat:
+    path: /opt/homepage
+  register: homepage_installed
+
+- name: Create Homepage directory
+  file:
+    path: /opt/homepage
+    state: directory
+    mode: '0755'
+  when: not homepage_installed.stat.exists
+
+- name: Copy Homepage docker-compose file
+  copy:
+    src: ../../../../files/docker-compose/homepage-compose.yaml
+    dest: /opt/homepage/docker-compose.yaml
+    mode: '0644'
+  when: not homepage_installed.stat.exists
+
+- name: Run Homepage container
+  shell: docker compose up -d
+  args:
+    chdir: /opt/homepage
+  when: not homepage_installed.stat.exists

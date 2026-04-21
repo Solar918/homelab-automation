@@ -1,0 +1,25 @@
+---
+services:
+  crafty:
+    container_name: crafty_container
+    image: registry.gitlab.com/crafty-controller/crafty-4:latest
+    security_opt:
+      - apparmor:unconfined
+    restart: always
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Pacific/Auckland
+    ports:
+      - "5520-5550:5520-5550/udp" # Hytale
+      - "8000:8000" # HTTP
+      - "8443:8443" # HTTPS
+      - "8123:8123" # DYNMAP
+      - "19132:19132/udp" # BEDROCK
+      - "25500-25600:25500-25600" # MC SERV PORT RANGE
+    volumes:
+      - /mnt/data/docker/crafty/backups:/crafty/backups
+      - /opt/crafty/logs:/crafty/logs
+      - /opt/crafty/servers:/crafty/servers
+      - /opt/crafty/config:/crafty/app/config
+      - /opt/crafty/import:/crafty/import

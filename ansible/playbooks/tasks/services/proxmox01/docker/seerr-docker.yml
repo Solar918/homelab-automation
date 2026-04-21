@@ -1,0 +1,39 @@
+- name: Check if Seerr is installed
+  stat:
+    path: /opt/seerr
+  register: seerr_installed
+
+- name: Ensure Seerr directory and config sub-dir exist with SetGID
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: ethan
+    group: ethan
+    mode: '2775'
+  loop:
+    - /opt/seerr
+    - /opt/seerr/config
+  when: not seerr_installed.stat.exists
+
+- name: Change Seerr directory ownership
+  file:
+    path: /opt/seerr
+    state: directory
+    owner: ethan
+    group: ethan
+    mode: '2775'
+    recurse: yes
+  when: not seerr_installed.stat.exists
+
+- name: Copy Seerr docker-compose file
+  copy:
+    src: ../../../../files/docker-compose/seerr-compose.yaml
+    dest: /opt/seerr/docker-compose.yaml
+    mode: '0644'
+  when: not seerr_installed.stat.exists
+
+- name: Run Seerr container
+  shell: docker compose up -d
+  args:
+    chdir: /opt/seerr
+  when: not seerr_installed.stat.exists

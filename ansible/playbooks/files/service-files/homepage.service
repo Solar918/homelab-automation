@@ -1,0 +1,15 @@
+[Unit]
+Description=Homepage
+After=network.target
+StartLimitIntervalSec=0
+[Service]
+Environment="HOMEPAGE_ALLOWED_HOSTS=192.168.68.203:3000,home.koines.org"
+Type=simple
+Restart=always
+RestartSec=1
+User=ethan
+Group=ethan
+WorkingDirectory=/opt/homepage/
+ExecStart=pnpm start
+[Install]
+WantedBy=multi-user.target

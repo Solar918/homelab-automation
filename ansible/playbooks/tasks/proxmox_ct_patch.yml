@@ -1,0 +1,97 @@
+# Expects:
+#   ct: {name, ctid, node, needs_keyctl, needs_tun}
+#   pve_host_aliases: {proxmox02: proxmox02, ...}
+
+- name: Resolve PVE host to delegate to
+  set_fact:
+    _pve_host: "{{ (pve_host_aliases | default({})).get(ct.node, ct.node) }}"
+
+- name: Load TUN kernel module (idempotent)
+  community.general.modprobe:
+    name: tun
+    state: present
+  delegate_to: "{{ _pve_host }}"
+
+- name: Read CT config
+  slurp:
+    path: "/etc/pve/lxc/{{ ct.ctid }}.conf"
+  register: ctconf
+  failed_when: false
+  delegate_to: "{{ _pve_host }}"
+
+# --- fix: compute conf_text first ---
+- name: Compute config text
+  set_fact:
+    conf_text: "{{ (ctconf.content | default('') | b64decode) | default('') }}"
+  delegate_to: "{{ _pve_host }}"
+  run_once: false
+
+# --- then derive flags from conf_text ---
+- name: Parse current flags
+  set_fact:
+    has_keyctl: "{{ 'keyctl=1' in conf_text }}"
+    has_nesting: "{{ 'nesting=1' in conf_text }}"
+    has_apparmor_unconfined: "{{ 'lxc.apparmor.profile: unconfined' in conf_text }}"
+    has_cap_drop: "{{ 'lxc.cap.drop:' in conf_text }}"
+    has_tun_allow: "{{ 'lxc.cgroup2.devices.allow: c 10:200 rwm' in conf_text }}"
+    has_tun_mount: "{{ 'lxc.mount.entry: /dev/net/tun dev/net/tun none bind,create=file' in conf_text }}"
+
+- name: Check CT running state (only if we might change features)
+  shell: "pct status {{ ct.ctid }} | awk '{print $2}'"
+  register: status
+  changed_when: false
+  failed_when: false
+  when: ct.needs_keyctl and (not has_keyctl or not has_nesting or not has_apparmor_unconfined or not has_cap_drop)
+  delegate_to: "{{ _pve_host }}"
+
+- name: Stop CT (if running and we must change features)
+  command: "pct stop {{ ct.ctid }}"
+  when:
+    - ct.needs_keyctl and (not has_keyctl or not has_nesting or not has_apparmor_unconfined or not has_cap_drop)
+    - status.stdout is search('running')
+  delegate_to: "{{ _pve_host }}"
+
+- name: Set features (nesting,keyctl)
+  command: "pct set {{ ct.ctid }} -features nesting=1,keyctl=1"
+  register: set_features
+  changed_when: set_features.rc == 0
+  when: ct.needs_keyctl and (not has_keyctl or not has_nesting)
+  delegate_to: "{{ _pve_host }}"
+
+- name: Ensure apparmor unconfined for Docker CTs
+  lineinfile:
+    path: "/etc/pve/lxc/{{ ct.ctid }}.conf"
+    line: "lxc.apparmor.profile: unconfined"
+    state: present
+  when: ct.needs_keyctl and not has_apparmor_unconfined
+  delegate_to: "{{ _pve_host }}"
+
+- name: Ensure capabilities drop for Docker CTs (Fix AppArmor parser)
+  lineinfile:
+    path: "/etc/pve/lxc/{{ ct.ctid }}.conf"
+    line: "lxc.cap.drop:"
+    state: present
+  when: ct.needs_keyctl and not has_cap_drop
+  delegate_to: "{{ _pve_host }}"
+
+- name: Ensure TUN device allow rule present
+  lineinfile:
+    path: "/etc/pve/lxc/{{ ct.ctid }}.conf"
+    line: "lxc.cgroup2.devices.allow: c 10:200 rwm"
+    state: present
+  when: ct.needs_tun and not has_tun_allow
+  delegate_to: "{{ _pve_host }}"
+
+- name: Ensure TUN bind-mount present
+  lineinfile:
+    path: "/etc/pve/lxc/{{ ct.ctid }}.conf"
+    line: "lxc.mount.entry: /dev/net/tun dev/net/tun none bind,create=file"
+    state: present
+  when: ct.needs_tun and not has_tun_mount
+  delegate_to: "{{ _pve_host }}"
+
+- name: Start CT if anything changed
+  command: "pct start {{ ct.ctid }}"
+  when: (ct.needs_keyctl and (not has_keyctl or not has_nesting or not has_apparmor_unconfined or not has_cap_drop)) or
+        (ct.needs_tun and (not has_tun_allow or not has_tun_mount))
+  delegate_to: "{{ _pve_host }}"

@@ -1,0 +1,34 @@
+- name: Check if Adguard Home is installed
+  stat:
+    path: /opt/adguardhome/
+  register: adguardhome_installed
+
+- name: Create Adguard Home user
+  user:
+    name: adguardhome
+    system: yes
+    create_home: no
+  when: not adguardhome_installed.stat.exists
+
+- name: Create Adguard Home directory
+  file:
+    path: /opt/adguardhome
+    state: directory
+    owner: adguardhome
+    group: adguardhome
+  when: not adguardhome_installed.stat.exists
+
+- name: Copy Docker Compose file for Adguard Home
+  copy:
+    src: ../../../../files/docker-compose/adguard-compose.yaml
+    dest: /opt/adguardhome/docker-compose.yaml
+    owner: adguardhome
+    group: adguardhome
+    mode: '0644'
+  when: not adguardhome_installed.stat.exists
+
+- name: Start Adguard Home container
+  command: docker-compose up -d
+  args:
+    chdir: /opt/adguardhome
+  when: not adguardhome_installed.stat.exists

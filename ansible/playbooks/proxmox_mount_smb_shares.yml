@@ -1,0 +1,55 @@
+- name: Mount SMB shares on Proxmox hosts
+  hosts: all
+  gather_facts: false
+  become: true
+  vars:
+    pve01_password: "{{ lookup('env','PVE01_PASSWORD') | default('changeme', true) }}"
+    pve01_username: "{{ lookup('env','PVE01_USERNAME') | default('changeme', true) }}"
+    pve02_password: "{{ lookup('env','PVE02_PASSWORD') | default('changeme', true) }}"
+    pve02_username: "{{ lookup('env','PVE02_USERNAME') | default('changeme', true) }}"
+
+  tasks:
+    - name: Ensure mount directories exist
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+      loop:
+        - /mnt/Media
+        - /mnt/Data
+      when: inventory_hostname == 'proxmox01' or inventory_hostname == 'proxmox02'
+
+    - name: Add fstab entry for media mount
+      ansible.builtin.lineinfile:
+        path: /etc/fstab
+        regexp: '^//192.168.68.220/Media '
+        line: "//192.168.68.220/Media /mnt/Media cifs username={{ pve01_username }},password={{ pve01_password }},uid=1000,gid=media,iocharset=utf8,cache=none,ro,nounix,noperm 0 0"
+      when: inventory_hostname == 'proxmox01'
+
+    - name: Add fstab entry for data mount
+      ansible.builtin.lineinfile:
+        path: /etc/fstab
+        regexp: '^//192.168.68.210/Data '
+        line: "//192.168.68.210/Data /mnt/Data cifs username={{ pve02_username }},password={{ pve02_password }},uid=1000,gid=data,iocharset=utf8,cache=none,ro,nounix,noperm 0 0"
+      when: inventory_hostname == 'proxmox02'
+
+    - name: Create SMB Mount systemd service file
+      copy:
+        src: ../files/service-files/mount-all.service
+        dest: /etc/systemd/system/mount-all.service
+        owner: root
+        group: root
+        mode: '0644'
+        force: yes
+        remote_src: no
+      when: inventory_hostname == 'proxmox01' or inventory_hostname == 'proxmox02'
+
+    - name: Reload systemd daemon
+      command: systemctl daemon-reload
+      when: inventory_hostname == 'proxmox01' or inventory_hostname == 'proxmox02'
+    
+    - name: Enable and start mount-all service
+      ansible.builtin.systemd:
+        name: mount-all.service
+        enabled: yes
+        state: started
+      when: inventory_hostname == 'proxmox01' or inventory_hostname == 'proxmox02'

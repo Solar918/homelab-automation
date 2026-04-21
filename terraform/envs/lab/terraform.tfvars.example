@@ -1,0 +1,2 @@
+# Change name of file to terraform.tfvars
+ssh_public_key = "<SSH Key>"

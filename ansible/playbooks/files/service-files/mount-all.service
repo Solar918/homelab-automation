@@ -1,0 +1,12 @@
+[Unit]
+Description=Mount all filesystems from fstab
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/mount -a
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

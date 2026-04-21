@@ -1,0 +1,25 @@
+- name: Set required LXC containers to privileged
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+     # Map TF node strings to SSH inventory hostnames if needed (adjust to your names)
+     pve_host_aliases:
+       proxmox01: proxmox01
+       proxmox02: proxmox02
+       pve01: pve01
+       pve02: pve02
+
+# This task runs on the *correct Proxmox node* based on ct.node
+  tasks:  
+    - name: Load ct_features array from JSON
+      set_fact:
+        ct_features: "{{ lookup('file', '../vars/ct_features.json') | from_json }}"
+    
+    - name: Set needed containers to privileged
+      include_tasks: tasks/proxmox_lxc_set_privileged.yml
+      when: ct.name == 'Arrs'
+      loop: "{{ ct_features }}"
+      loop_control:
+        loop_var: ct
+        label: "{{ ct.name }}@{{ ct.node }} (ctid={{ ct.ctid }})"

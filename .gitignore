@@ -1,1 +1,17 @@
 .env
+
+# Terraform
+terraform/envs/lab/terraform.tfstate*
+terraform/envs/lab/tfplan*
+terraform/envs/lab/.terraform*
+terraform/envs/lab/.terraform/
+terraform/envs/lab/.terraform.lock.hcl
+terraform/modules/
+
+# Ansible
+ansible/playbooks/files/id_ed25519
+ansible/playbooks/files/id_ed25519.pub
+ansible/playbooks/files/docker-compose/plex-compose.yaml
+ansible/inventories/
+ansible/vars/
+ansible/known_hosts/

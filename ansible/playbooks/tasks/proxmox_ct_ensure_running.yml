@@ -1,0 +1,16 @@
+# Ensures a CT is started even if no feature changes were required
+- name: Resolve PVE host
+  set_fact:
+    _pve_host: "{{ pve_host_aliases.get(ct.node, ct.node) }}"
+
+- name: Check CT running state
+  shell: "pct status {{ ct.ctid }} | awk '{print $2}'"
+  register: ct_state
+  changed_when: false
+  failed_when: false
+  delegate_to: "{{ _pve_host }}"
+
+- name: Start CT if stopped
+  command: "pct start {{ ct.ctid }}"
+  when: ct_state.stdout is not search('running')
+  delegate_to: "{{ _pve_host }}"

@@ -1,0 +1,6 @@
+- import_tasks: radarr-docker.yml
+- import_tasks: sonarr-docker.yml
+- import_tasks: bazarr-docker.yml
+- import_tasks: lidarr-docker.yml
+- import_tasks: prowlarr-docker.yml
+- import_tasks: seerr-docker.yml

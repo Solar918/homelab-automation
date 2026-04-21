@@ -1,0 +1,8 @@
+- name: Set CT {{ ct.ctid }} to privileged
+  delegate_to: "{{ pve_host_aliases[ct.node] }}"
+  become: yes
+  lineinfile:
+    path: "/etc/pve/lxc/{{ ct.ctid }}.conf"
+    regexp: "^unprivileged:"
+    line: "unprivileged: 0"
+    create: no

@@ -1,0 +1,24 @@
+- name: Check if Tautulli is installed
+  stat:
+    path: /opt/tautulli
+  register: tautulli_installed
+
+- name: Create Tautulli directory
+  file:
+    path: /opt/tautulli
+    state: directory
+    mode: '0755'
+  when: not tautulli_installed.stat.exists
+
+- name: Copy Tautulli docker-compose file
+  copy:
+    src: ../../../../files/docker-compose/tautulli-compose.yaml
+    dest: /opt/tautulli/docker-compose.yaml
+    mode: '0644'
+  when: not tautulli_installed.stat.exists
+
+- name: Run Tautulli container
+  shell: docker compose up -d
+  args:
+    chdir: /opt/tautulli
+  when: not tautulli_installed.stat.exists

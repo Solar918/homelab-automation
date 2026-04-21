@@ -1,0 +1,38 @@
+- name: Check if Plex is installed
+  stat:
+    path: /opt/plex
+  register: plex_installed
+
+- name: Create Plex directory
+  file:
+    path: /opt/plex
+    state: directory
+    mode: '0755'
+  when: not plex_installed.stat.exists
+
+- name: Create Plex TV Series directory
+  file:
+    path: /tv
+    state: directory
+    mode: '0755'
+  when: not plex_installed.stat.exists
+
+- name: Create Plex Movies directory
+  file:
+    path: /movies
+    state: directory
+    mode: '0755'
+  when: not plex_installed.stat.exists
+
+- name: Copy Plex docker-compose file
+  copy:
+    src: ../../../../files/docker-compose/plex-compose.yaml
+    dest: /opt/plex/docker-compose.yaml
+    mode: '0644'
+  when: not plex_installed.stat.exists
+
+- name: Run Plex container
+  shell: docker compose up -d
+  args:
+    chdir: /opt/plex
+  when: not plex_installed.stat.exists

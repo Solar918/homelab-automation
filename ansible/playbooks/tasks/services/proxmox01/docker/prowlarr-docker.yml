@@ -1,0 +1,24 @@
+- name: Check if Prowlarr is installed
+  stat:
+    path: /opt/prowlarr
+  register: prowlarr_installed
+
+- name: Create Prowlarr directory
+  file:
+    path: /opt/prowlarr
+    state: directory
+    mode: '0755'
+  when: not prowlarr_installed.stat.exists
+
+- name: Copy Prowlarr docker-compose file
+  copy:
+    src: ../../../../files/docker-compose/prowlarr-compose.yaml
+    dest: /opt/prowlarr/docker-compose.yaml
+    mode: '0644'
+  when: not prowlarr_installed.stat.exists
+
+- name: Run Prowlarr container
+  shell: docker compose up -d
+  args:
+    chdir: /opt/prowlarr
+  when: not prowlarr_installed.stat.exists

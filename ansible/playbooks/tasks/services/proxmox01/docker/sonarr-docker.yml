@@ -1,0 +1,24 @@
+- name: Check if Sonarr is installed
+  stat:
+    path: /opt/sonarr
+  register: sonarr_installed
+
+- name: Create Sonarr directory
+  file:
+    path: /opt/sonarr
+    state: directory
+    mode: '0755'
+  when: not sonarr_installed.stat.exists
+
+- name: Copy sonarr docker-compose file
+  copy:
+    src: ../../../../files/docker-compose/sonarr-compose.yaml
+    dest: /opt/sonarr/docker-compose.yaml
+    mode: '0644'
+  when: not sonarr_installed.stat.exists
+
+- name: Run sonarr container
+  shell: docker compose up -d
+  args:
+    chdir: /opt/sonarr
+  when: not sonarr_installed.stat.exists

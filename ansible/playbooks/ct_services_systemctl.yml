@@ -1,0 +1,57 @@
+- name: Install necessary services
+  hosts: all
+  become: true
+
+  tasks:
+    # Reboot all Containers
+    - name: Reboot all Containers except Proxmox nodes to apply changes
+      ansible.builtin.reboot:
+      when: inventory_hostname != 'proxmox01' and inventory_hostname != 'proxmox02'
+
+    # Both Proxmox Nodes
+    - name: Install Cockpit
+      import_tasks: tasks/services/cockpit.yml
+      when: inventory_hostname == 'Cockpit01' or inventory_hostname == 'Cockpit02'
+
+    # Proxmox01 Services
+    - name: Install qBitTorrent
+      import_tasks: tasks/services/proxmox01/qBittorrent.yml
+      when: inventory_hostname == 'qBitTorrent'
+
+    - name: Install Plex
+      import_tasks: tasks/services/proxmox01/docker/plex-docker.yml
+      when: inventory_hostname == 'Plex'
+
+    - name: Install Crafty Controller
+      import_tasks: tasks/services/proxmox01/systemctl/crafty-systemctl.yml
+      when: inventory_hostname == 'Crafty-Controller'
+    
+    - name: Install Arrs Suite
+      import_tasks: tasks/services/proxmox01/systemctl/arrs-suite-systemctl.yml
+      when: inventory_hostname == 'Arrs'
+    
+    - name: Install Tautulli
+      import_tasks: tasks/services/proxmox01/systemctl/tautulli-systemctl.yml
+      when: inventory_hostname == 'Graphs'
+
+
+    # Proxmox02 Services
+    - name: Install Homepage
+      import_tasks: tasks/services/proxmox02/systemctl/homepage-systemctl.yml
+      when: inventory_hostname == 'Homepage'
+    
+    - name: Install Apache Web Server
+      import_tasks: tasks/services/proxmox02/websites.yml
+      when: inventory_hostname == 'Websites'
+    
+    - name: Install Nginx Proxy Manager
+      import_tasks: tasks/services/proxmox02/docker/nginx-docker.yml
+      when: inventory_hostname == 'Nginx-Proxy-Manager'
+    
+    - name: Install Adguard Home
+      import_tasks: tasks/services/proxmox02/docker/adguard-docker.yml
+      when: inventory_hostname == 'Adguard-Home'
+    
+    # - name: Install Cloudflared Tunnel Client
+    #   import_tasks: tasks/services/proxmox02/cloudflared.yml
+    #   when: inventory_hostname == 'Cloudflared'

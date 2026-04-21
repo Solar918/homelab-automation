@@ -1,0 +1,29 @@
+- name: Ensure Cockpit is installed
+  apt:
+    name: cockpit
+    state: present
+    update_cache: yes
+
+- name: Check if 45Drives repo is already set up
+  stat:
+    path: /etc/apt/sources.list.d/45drives.list
+  register: repo_45drives
+
+- name: Download 45Drives repo setup script
+  get_url:
+    url: https://repo.45drives.com/setup
+    dest: /tmp/setup-45drives.sh
+    mode: '0755'
+  when: not repo_45drives.stat.exists
+
+- name: Execute 45Drives repo setup script
+  command: bash /tmp/setup-45drives.sh
+  when: not repo_45drives.stat.exists
+
+- name: Install Cockpit Navigator and File Sharing
+  apt:
+    name:
+      - cockpit-navigator
+      - cockpit-file-sharing
+    state: present
+    update_cache: yes

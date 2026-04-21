@@ -1,0 +1,62 @@
+- name: Bootstrap admin user and harden SSH
+  hosts: all
+  gather_facts: false
+  vars:
+    ansible_user: root
+    ansible_become: false
+    new_admin_user: ethan
+    new_admin_password: "{{ lookup('env','ADMIN_PASSWORD') | default('changeme', true) }}"
+    admin_pubkey: "{{ lookup('file', lookup('env','HOME') + '/.ssh/id_ed25519.pub') }}"
+
+  tasks:
+    - name: Ensure admin user exists
+      ansible.builtin.user:
+        name: "{{ new_admin_user }}"
+        groups: sudo
+        append: true
+        shell: /bin/bash
+        create_home: true
+
+    - name: Set password for admin user
+      ansible.builtin.user:
+        name: "{{ new_admin_user }}"
+        password: "{{ new_admin_password | password_hash('sha512') }}"
+
+    - name: Authorize admin SSH key
+      ansible.builtin.authorized_key:
+        user: "{{ new_admin_user }}"
+        key: "{{ admin_pubkey }}"
+        state: present
+        manage_dir: true
+
+    - name: Ensure sudo is installed
+      ansible.builtin.apt:
+        name: sudo
+        state: present
+        update_cache: yes
+
+    - name: Allow passwordless sudo
+      ansible.builtin.copy:
+        dest: "/etc/sudoers.d/99-{{ new_admin_user }}-nopasswd"
+        content: "{{ new_admin_user }} ALL=(ALL) NOPASSWD:ALL\n"
+        owner: root
+        group: root
+        mode: "0440"
+        validate: "visudo -cf %s"
+
+    - name: Speed up SSH logins and disable password auth
+      ansible.builtin.copy:
+        dest: /etc/ssh/sshd_config.d/10-fast-hardened.conf
+        content: |
+          UseDNS no
+          GSSAPIAuthentication no
+          PasswordAuthentication yes
+          PubkeyAuthentication yes
+          PermitRootLogin yes
+      notify: Restart ssh
+
+  handlers:
+    - name: Restart ssh
+      ansible.builtin.service:
+        name: ssh
+        state: restarted

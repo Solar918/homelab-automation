@@ -1,0 +1,89 @@
+- name: Check if Radarr is installed
+  stat:
+    path: /opt/radarr
+  register: radarr_installed
+
+- name: Install Radarr dependencies
+  apt:
+    name:
+      - sqlite3
+      - curl
+    state: present
+    update_cache: yes
+
+- name: Create Radarr user
+  user:
+    name: radarr
+    system: yes
+    create_home: no
+
+- name: Create Media group
+  group:
+    name: media
+    state: present
+
+- name: Add Radarr user to Media group
+  user:
+    name: radarr
+    groups: media
+    append: yes
+# * Your download clients and media server run as and are a part of the group media
+# * Your paths used by your download clients and media server are accessible (read/write) to the group media
+
+- name: Create Radarr config directory
+  file:
+    path: /var/lib/radarr
+    state: directory
+    owner: radarr
+    group: media
+    mode: '0755'
+
+- name: Download the correct binaries
+  get_url:
+    url: "http://radarr.servarr.com/v1/update/master/updatefile?os=linux&runtime=netcore&arch=x64"
+    dest: /tmp/
+    mode: '0644'
+  when: not radarr_installed.stat.exists
+
+- name: Uncompress the files
+  shell: tar -xvzf /tmp/Radarr*.linux*.tar.gz
+  when: not radarr_installed.stat.exists
+
+- name: Move Radarr files to /opt
+  command: mv Radarr /opt
+  args:
+    removes: /tmp/Radarr*.linux*.tar.gz
+  when: not radarr_installed.stat.exists
+
+- name: Rename Radarr folder to lowercase
+  command: mv /opt/Radarr /opt/radarr
+  when: not radarr_installed.stat.exists
+
+- name: Set ownership of Radarr files
+  file:
+    path: /opt/radarr
+    state: directory
+    owner: radarr
+    group: radarr
+    recurse: yes
+
+- name: Create Radarr systemd service file
+  copy:
+    src: ../../../files/service-files/radarr.service
+    dest: /etc/systemd/system/radarr.service
+    owner: root
+    group: root
+    mode: '0644'
+    force: yes
+    remote_src: no
+
+- name: Reload systemd daemon
+  command: systemctl daemon-reload
+  become: true
+
+- name: Enable and start Radarr service
+  systemd:
+    name: radarr
+    enabled: true
+    state: started
+  become: true

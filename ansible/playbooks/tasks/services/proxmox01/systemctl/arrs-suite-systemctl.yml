@@ -1,0 +1,6 @@
+- import_tasks: radarr-systemctl.yml
+- import_tasks: sonarr-systemctl.yml
+- import_tasks: bazarr-systemctl.yml
+- import_tasks: lidarr-systemctl.yml
+- import_tasks: prowlarr-systemctl.yml
+- import_tasks: ../docker/overseerr-docker.yml

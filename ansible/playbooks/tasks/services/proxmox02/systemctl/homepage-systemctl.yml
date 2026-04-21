@@ -1,0 +1,86 @@
+- name: Check if Homepage is installed
+  stat:
+    path: /opt/homepage/
+  register: homepage_installed
+
+- name: Ensure required packages are installed
+  get_url:
+    url: https://deb.nodesource.com/setup_24.x
+    dest: /tmp/nodesource_setup.sh
+    mode: '0755'
+  when: not homepage_installed.stat.exists
+
+- name: Run NodeSource setup script
+  command: bash /tmp/nodesource_setup.sh
+  when: not homepage_installed.stat.exists
+
+- name: Install Node.js
+  apt:
+    name: nodejs
+    state: present
+    update_cache: yes
+  when: not homepage_installed.stat.exists
+
+- name: Install pnpm
+  community.general.npm:
+    name: pnpm
+    global: yes
+    state: present
+  become: true
+  when: not homepage_installed.stat.exists
+
+- name: Mark Homepage repo as safe for git
+  become: yes
+  ansible.builtin.command:
+    cmd: git config --global --add safe.directory /var/opt/homepage/homepage
+  args:
+    creates: /root/.gitconfig
+
+- name: Clone Homepage repository
+  git:
+    repo: "https://github.com/gethomepage/homepage.git"
+    dest: /opt/homepage
+    version: HEAD
+    force: yes
+  when: not homepage_installed.stat.exists
+
+- name: Set ownership of Homepage files
+  file:
+    path: /opt/homepage
+    state: directory
+    owner: root
+    group: root
+    recurse: yes
+
+- name: Create Homepage systemd service file
+  copy:
+    src: ../../../files/service-files/homepage.service
+    dest: /etc/systemd/system/homepage.service
+    owner: root
+    group: root
+    mode: '0644'
+    force: yes
+    remote_src: no
+
+- name: Install Homepage dependencies
+  command: pnpm install
+  args:
+    chdir: /opt/homepage
+  when: not homepage_installed.stat.exists
+
+- name: Build Homepage application
+  command: pnpm build
+  args:
+    chdir: /opt/homepage
+  when: not homepage_installed.stat.exists
+
+- name: Reload systemd daemon
+  command: systemctl daemon-reload
+  become: true
+
+- name: Enable and start Homepage service
+  systemd:
+    name: homepage
+    enabled: true
+    state: started
+  become: true

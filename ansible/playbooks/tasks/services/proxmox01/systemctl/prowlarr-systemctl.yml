@@ -1,0 +1,89 @@
+- name: Check if Prowlarr is installed
+  stat:
+    path: /opt/prowlarr
+  register: prowlarr_installed
+
+- name: Install Prowlarr dependencies
+  apt:
+    name:
+      - sqlite3
+      - curl
+    state: present
+    update_cache: yes
+
+- name: Create Prowlarr user
+  user:
+    name: prowlarr
+    system: yes
+    create_home: no
+
+- name: Create Media group
+  group:
+    name: media
+    state: present
+
+- name: Add Prowlarr user to Media group
+  user:
+    name: prowlarr
+    groups: media
+    append: yes
+# * Your download clients and media server run as and are a part of the group media
+# * Your paths used by your download clients and media server are accessible (read/write) to the group media
+
+- name: Create Prowlarr config directory
+  file:
+    path: /var/lib/prowlarr
+    state: directory
+    owner: prowlarr
+    group: media
+    mode: '0755'
+
+- name: Download the correct binaries
+  get_url:
+    url: "http://prowlarr.servarr.com/v1/update/master/updatefile?os=linux&runtime=netcore&arch=x64"
+    dest: /tmp/
+    mode: '0644'
+  when: not prowlarr_installed.stat.exists
+
+- name: Uncompress the files
+  shell: tar -xvzf /tmp/Prowlarr*.linux*.tar.gz
+  when: not prowlarr_installed.stat.exists
+
+- name: Move Prowlarr files to /opt
+  command: mv Prowlarr /opt
+  args:
+    removes: /tmp/Prowlarr*.linux*.tar.gz
+  when: not prowlarr_installed.stat.exists
+
+- name: Rename Prowlarr folder to lowercase
+  command: mv /opt/Prowlarr /opt/prowlarr
+  when: not prowlarr_installed.stat.exists
+
+- name: Set ownership of Prowlarr files
+  file:
+    path: /opt/prowlarr
+    state: directory
+    owner: prowlarr
+    group: prowlarr
+    recurse: yes
+
+- name: Create Prowlarr systemd service file
+  copy:
+    src: ../../../files/service-files/prowlarr.service
+    dest: /etc/systemd/system/prowlarr.service
+    owner: root
+    group: root
+    mode: '0644'
+    force: yes
+    remote_src: no
+
+- name: Reload systemd daemon
+  command: systemctl daemon-reload
+  become: true
+
+- name: Enable and start Prowlarr service
+  systemd:
+    name: prowlarr
+    enabled: true
+    state: started
+  become: true

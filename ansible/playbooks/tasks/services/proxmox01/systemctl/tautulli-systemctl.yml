@@ -1,0 +1,72 @@
+- name: Check if Tautulli is installed
+  stat:
+    path: /opt/tautulli
+  register: tautulli_installed
+
+- name: Install Tautulli dependencies
+  apt: 
+    name:
+      - git
+      - python3
+      - python3-setuptools
+    state: present
+    update_cache: yes
+  when: not tautulli_installed.stat.exists
+
+- name: Create Tautulli user
+  user:
+    name: tautulli
+    system: yes
+    create_home: no
+  when: not tautulli_installed.stat.exists
+
+- name: Create Media group
+  group:
+    name: media
+    state: present
+  when: not tautulli_installed.stat.exists
+
+- name: Add Tautulli user to Media group
+  user:
+    name: tautulli
+    groups: media
+    append: yes
+  when: not tautulli_installed.stat.exists
+
+- name: Clone Tautulli repository
+  git:
+    repo: 'https://github.com/Tautulli/Tautulli.git'
+    dest: /opt/tautulli
+    version: master
+    force: yes
+  when: not tautulli_installed.stat.exists
+
+- name: Set ownership of Tautulli files
+  file:
+    path: /opt/tautulli
+    state: directory
+    owner: tautulli
+    group: tautulli
+    recurse: yes
+  when: not tautulli_installed.stat.exists
+
+- name: Create Tautulli systemd service file
+  copy:
+    src: ../../../files/service-files/tautulli.service
+    dest: /etc/systemd/system/tautulli.service
+    owner: root
+    group: root
+    mode: '0644'
+    force: yes
+    remote_src: no
+
+- name: Reload systemd daemon
+  command: sudo systemctl daemon-reload
+  become: true
+
+- name: Enable and start Tautulli service
+  systemd:
+    name: tautulli
+    enabled: true
+    state: started
+  become: true

@@ -1,0 +1,13 @@
+services:
+  homepage:
+    image: ghcr.io/gethomepage/homepage:latest
+    container_name: homepage
+    security_opt:
+      - apparmor:unconfined
+    ports:
+      - 3000:3000
+    volumes:
+      - /opt/homepage:/app/config # Make sure your local config directory exists
+    #  - /var/run/docker.sock:/var/run/docker.sock:ro # (optional) For docker integrations
+    environment:
+      HOMEPAGE_ALLOWED_HOSTS: 192.168.68.200:3000, homepage.koines.org # required, may need port. See gethomepage.dev/installation/#homepage_allowed_hosts

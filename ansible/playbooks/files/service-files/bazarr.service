@@ -1,0 +1,14 @@
+[Unit]
+Description=Bazarr Daemon
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/bazarr
+ExecStart=/usr/bin/python3 /opt/bazarr/bazarr.py
+Restart=on-failure
+User=bazarr
+Group=media
+
+[Install]
+WantedBy=multi-user.target

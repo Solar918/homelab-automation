@@ -1,0 +1,20 @@
+# Change file name to plex-compose.yaml
+---
+services:
+  plex:
+    image: lscr.io/linuxserver/plex:latest
+    container_name: plex
+    network_mode: host
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Pacific/Auckland
+      - VERSION=docker
+      - PLEX_CLAIM=[Claim Code]
+    ports:
+      - 32400:32400
+    volumes:
+      - /opt/plex/config:/config
+      - [Host path]:[Container path]
+      - [Host path]:[Container path]
+    restart: unless-stopped

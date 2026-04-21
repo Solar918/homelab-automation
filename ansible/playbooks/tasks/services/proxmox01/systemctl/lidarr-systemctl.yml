@@ -1,0 +1,91 @@
+- name: Check if Lidarr is installed
+  stat:
+    path: /opt/lidarr
+  register: lidarr_installed
+
+- name: Install Lidarr dependencies
+  apt:
+    name:
+      - sqlite3
+      - curl
+      - mediainfo
+      - libchromaprint-tools
+    state: present
+    update_cache: yes
+
+- name: Create Lidarr user
+  user:
+    name: lidarr
+    system: yes
+    create_home: no
+
+- name: Create Media group
+  group:
+    name: media
+    state: present
+
+- name: Add Lidarr user to Media group
+  user:
+    name: lidarr
+    groups: media
+    append: yes
+# * Your download clients and media server run as and are a part of the group media
+# * Your paths used by your download clients and media server are accessible (read/write) to the group media
+
+- name: Create Lidarr config directory
+  file:
+    path: /var/lib/lidarr
+    state: directory
+    owner: lidarr
+    group: media
+    mode: '0755'
+
+- name: Download the correct binaries
+  get_url:
+    url: "http://lidarr.servarr.com/v1/update/master/updatefile?os=linux&runtime=netcore&arch=x64"
+    dest: /tmp/
+    mode: '0644'
+  when: not lidarr_installed.stat.exists
+
+- name: Uncompress the files
+  shell: tar -xvzf /tmp/Lidarr*.linux*.tar.gz
+  when: not lidarr_installed.stat.exists
+
+- name: Move Lidarr files to /opt
+  command: mv Lidarr /opt
+  args:
+    removes: /tmp/Lidarr*.linux*.tar.gz
+  when: not lidarr_installed.stat.exists
+
+- name: Rename Lidarr folder to lowercase
+  command: mv /opt/Lidarr /opt/lidarr
+  when: not lidarr_installed.stat.exists
+
+- name: Set ownership of Lidarr files
+  file:
+    path: /opt/lidarr
+    state: directory
+    owner: lidarr
+    group: lidarr
+    recurse: yes
+
+- name: Create Lidarr systemd service file
+  copy:
+    src: ../../../files/service-files/lidarr.service
+    dest: /etc/systemd/system/lidarr.service
+    owner: root
+    group: root
+    mode: '0644'
+    force: yes
+    remote_src: no
+
+- name: Reload systemd daemon
+  command: systemctl daemon-reload
+  become: true
+
+- name: Enable and start Lidarr service
+  systemd:
+    name: lidarr
+    enabled: true
+    state: started
+  become: true

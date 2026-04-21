@@ -1,0 +1,33 @@
+- name: Ensure /Data directory exists on the Proxmox host
+  delegate_to: "{{ pve_host_aliases[ct.node] }}"
+  become: yes
+  ansible.builtin.file:
+    path: /Data
+    state: directory
+    mode: '0755'
+
+- name: Ensure /Media directory exists on the Proxmox host
+  delegate_to: "{{ pve_host_aliases[ct.node] }}"
+  become: yes
+  ansible.builtin.file:
+    path: /Media
+    state: directory
+    mode: '0755'
+    
+- name: Allow Data share access for CT {{ ct.ctid }}
+  delegate_to: "{{ pve_host_aliases[ct.node] }}"
+  become: yes
+  lineinfile:
+    path: "/etc/pve/lxc/{{ ct.ctid }}.conf"
+    regexp: '^mp1:'
+    line: "mp1: /Data/,mp=/mnt/Data"
+    create: yes
+
+- name: Allow Media share access for CT {{ ct.ctid }}
+  delegate_to: "{{ pve_host_aliases[ct.node] }}"
+  become: yes
+  lineinfile:
+    path: "/etc/pve/lxc/{{ ct.ctid }}.conf"
+    regexp: '^mp2:'
+    line: "mp2: /Media/,mp=/mnt/Media"
+    create: yes

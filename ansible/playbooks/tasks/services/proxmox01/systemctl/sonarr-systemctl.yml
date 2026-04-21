@@ -1,0 +1,89 @@
+- name: Check if Sonarr is installed
+  stat:
+    path: /opt/sonarr
+  register: sonarr_installed
+
+- name: Install Sonarr dependencies
+  apt:
+    name:
+      - sqlite3
+      - curl
+    state: present
+    update_cache: yes
+
+- name: Create Sonarr user
+  user:
+    name: sonarr
+    system: yes
+    create_home: no
+
+- name: Create Media group
+  group:
+    name: media
+    state: present
+
+- name: Add Sonarr user to Media group
+  user:
+    name: sonarr
+    groups: media
+    append: yes
+# * Your download clients and media server run as and are a part of the group media
+# * Your paths used by your download clients and media server are accessible (read/write) to the group media
+
+- name: Create Sonarr config directory
+  file:
+    path: /var/lib/sonarr
+    state: directory
+    owner: sonarr
+    group: media
+    mode: '0755'
+
+- name: Download the correct binaries
+  get_url:
+    url: "https://services.sonarr.tv/v1/download/main/latest?version=4&os=linux&arch=x64"
+    dest: /tmp/
+    mode: '0644'
+  when: not sonarr_installed.stat.exists
+
+- name: Uncompress the files
+  shell: tar -xvzf /tmp/Sonarr*.linux*.tar.gz
+  when: not sonarr_installed.stat.exists
+
+- name: Move Sonarr files to /opt
+  command: mv Sonarr /opt
+  args:
+    removes: /tmp/Sonarr*.linux*.tar.gz
+  when: not sonarr_installed.stat.exists
+
+- name: Rename Sonarr folder to lowercase
+  command: mv /opt/Sonarr /opt/sonarr
+  when: not sonarr_installed.stat.exists
+
+- name: Set ownership of Sonarr files
+  file:
+    path: /opt/sonarr
+    state: directory
+    owner: sonarr
+    group: sonarr
+    recurse: yes
+
+- name: Create Sonarr systemd service file
+  copy:
+    src: ../../../files/service-files/sonarr.service
+    dest: /etc/systemd/system/sonarr.service
+    owner: root
+    group: root
+    mode: '0644'
+    force: yes
+    remote_src: no
+
+- name: Reload systemd daemon
+  command: systemctl daemon-reload
+  become: true
+
+- name: Enable and start Sonarr service
+  systemd:
+    name: sonarr
+    enabled: true
+    state: started
+  become: true

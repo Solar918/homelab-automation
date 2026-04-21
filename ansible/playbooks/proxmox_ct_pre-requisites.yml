@@ -1,0 +1,16 @@
+- name: Install container pre-requisites
+  hosts: all
+  become: true
+
+  tasks:
+    - name: Install base packages
+      import_tasks: tasks/services/base_packages.yml
+      when: inventory_hostname in groups['all']
+
+    - name: Install docker pre-requisites
+      import_tasks: tasks/docker_pre_requisites.yml
+      when: inventory_hostname in groups['docker_hosts']
+
+    - name: Install GitHub
+      import_tasks: tasks/services/github.yml
+      when: inventory_hostname in groups['all']

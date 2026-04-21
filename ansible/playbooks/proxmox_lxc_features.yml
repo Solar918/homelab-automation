@@ -1,0 +1,36 @@
+- name: Ensure required LXC features for CTs (patch on the right PVE host)
+  hosts: all
+  gather_facts: false
+
+
+  vars:
+     # Map TF node strings to SSH inventory hostnames if needed (adjust to your names)
+     pve_host_aliases:
+       proxmox01: proxmox01
+       proxmox02: proxmox02
+       pve01: pve01
+       pve02: pve02
+
+
+
+  # Load the JSON list written by deploy.sh (it's a plain array)
+  tasks: 
+    - name: Load ct_features array from JSON
+      set_fact:
+        ct_features: "{{ lookup('file', '../vars/ct_features.json') | from_json }}"
+
+    - name: Patch each CT on its Proxmox node
+      include_tasks: tasks/proxmox_ct_patch.yml
+      loop: "{{ ct_features }}"
+      loop_control:
+        loop_var: ct
+        label: "{{ ct.name }}@{{ ct.node }} (ctid={{ ct.ctid }})"
+      run_once: true
+
+    - name: Ensure all CTs from Terraform are running
+      include_tasks: tasks/proxmox_ct_ensure_running.yml
+      loop: "{{ ct_features }}"
+      loop_control:
+        loop_var: ct
+        label: "{{ ct.name }}@{{ ct.node }} (ctid={{ ct.ctid }})"
+      run_once: true

@@ -1,0 +1,22 @@
+- name: Update apt cache
+  apt:
+    update_cache: yes
+    upgrade: yes
+
+- name: upgrade all packages to the latest version
+  apt:
+    upgrade: dist
+  become: true
+
+- name: Ensure base packages are installed
+  apt:
+    name:
+      - curl
+      - wget
+      - unzip
+      - tar
+      - zip
+      - sudo
+    state: present
+    update_cache: yes
+  become: true

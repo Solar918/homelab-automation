@@ -1,0 +1,14 @@
+[Unit]
+Description=Crafty 4
+After=network.target
+
+[Service]
+Type=simple
+User=crafty
+WorkingDirectory=/opt/minecraft/crafty
+ExecStart=/bin/bash /opt/minecraft/crafty/run_crafty_service.sh
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
